@@ -4,13 +4,19 @@ const { promises: fs } = require('fs');
  *
  * Part 1:
  *
- * Input is expected to be in the following format: 1000 2000 3000
+ * Input is expected to be in the following format:
+ * 1000
+ * 2000
+ * 3000
  *
  * 4000
  *
- * 5000 6000
+ * 5000
+ * 6000
  *
- * 7000 8000 9000
+ * 7000
+ * 8000
+ * 9000
  *
  * 10000
  *
