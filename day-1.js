@@ -2,6 +2,8 @@ const { promises: fs } = require('fs');
 
 /** Calorie Counting
  *
+ * Part 1:
+ *
  * Input is expected to be in the following format: 1000 2000 3000
  *
  * 4000
@@ -27,6 +29,21 @@ const { promises: fs } = require('fs');
  * it'll still be O(n) so stick with this for the solution, then optimize
  * afterwards if I think of an elegant way (off the top of my head, maintain
  * only the highest count in memory instead of an array).
+ *
+ * Part 2:
+ *
+ * Part 2 is simple enough: get the top 3 instead of the top 1. I'd like to
+ * amend step 2 above to resolve this:
+ *
+ * 2a. Sort the array (descending, to make max easier).
+ * 2b. Take any N elements from the start of the sorted array.
+ * 2c. Take the sum of those elements.
+ *
+ * 2a bumps up the time complexity quite a bit -- O(n log(n)) if Array#sort is
+ * implemented optimally -- but it does give a really nice interface for 2b. A
+ * more optimal algorithm would very likely have to do away with the generality
+ * of findMaxN, which I find is fine to keep because the requirements just
+ * showed us that N can vary arbitrarily.
  */
 
 function parseCaloriesList(list) {
@@ -48,22 +65,20 @@ function parseCaloriesList(list) {
   return countList;
 }
 
-function findMax(list) {
-  let max = list[0];
-  for (const element of list) {
-    if (element > max) max = element;
-  }
-  return max;
+function findMaxN(n, list) {
+  // sort desc
+  const sortedList = [...list].sort((a, b) => b - a);
+  return sortedList.slice(0, n);
 }
 
 async function main() {
   // read list from file
   const caloriesList = await fs.readFile('./day-1.data', { encoding: 'utf8' });
   const countList = parseCaloriesList(caloriesList);
-  const max = findMax(countList);
+  const max3 = findMaxN(3, countList);
 
   // print result
-  console.log(max);
+  console.log(max3.reduce((acc, a) => acc + a, 0));
 }
 
 main()
