@@ -10,11 +10,11 @@ const { promises: fs } = require('fs');
  * B X
  * C Z
  *
- * Each letter corresponds to an RPS throw. Left column is my opponent's throw,
- * Right column is mine.
+ * Each letter corresponds to a shape (an RPS throw: Rock, Paper, or Scisscors).
+ * Left column is my opponent's shape, Right column is mine.
  *
  * There are some scoring rules. My score for the round would be the sum of:
- * - My throw score: 1 for Rock, 2 for Paper, 3 for Scissors
+ * - My shape score: 1 for Rock, 2 for Paper, 3 for Scissors
  * - Outcome score: 0 for a loss, 3 for a draw, 6 for a win
  *
  * Problem is to calculate the total score for the entire input.
@@ -22,17 +22,27 @@ const { promises: fs } = require('fs');
  * Algo I'm thinking of:
  *
  * 1. Parse the list line-by-line into an Array of objects containing both
- * throws stored in a semantic type ("Round State").
+ * shapes stored in a semantic type ("Round State").
  * 2. Set up a function to compute score based on game state.
  * 3. Simply fold the sum across all rounds.
+ *
+ * Part 2:
+ *
+ * Second column is now what the outcome should be, which we just put into the
+ * round state. Now getOutcomeScore doesn't have to compute anything -- just
+ * read off the outcome from state!
  */
 
 const ROCK = Symbol('rock');
 const PAPER = Symbol('paper');
 const SCISSORS = Symbol('scissors');
 
+const LOSS = Symbol('loss');
+const DRAW = Symbol('draw');
+const WIN = Symbol('win');
+
 /**
- * Statically define what beats a throw in a ring structure, for convenience
+ * Statically define what beats a shape in a ring structure, for convenience
  * (this could be extensible, e.g. for Rock-Paper-Scissors-Lizard-Spock by
  * making the value an array or object or the like).
  */
@@ -41,23 +51,30 @@ const BEATS_MAP = new Map([
   [PAPER, ROCK],
   [SCISSORS, PAPER],
 ]);
+// reverse the relationship
+const BEATEN_BY_MAP = new Map([...BEATS_MAP.entries()].map(([k, v]) => [v, k]));
 
-function parseThrowString(throwString) {
-  switch (throwString) {
-    case 'A': // falls through
-    case 'X': return ROCK;
-    case 'B': // falls through
-    case 'Y': return PAPER;
-    case 'C': // falls through
-    case 'Z': return SCISSORS;
+function parseShapeString(shapeString) {
+  switch (shapeString) {
+    case 'A': return ROCK;
+    case 'B': return PAPER;
+    case 'C': return SCISSORS;
+  }
+}
+
+function parseOutcomeString(outcomeString) {
+  switch (outcomeString) {
+    case 'X': return LOSS;
+    case 'Y': return DRAW;
+    case 'Z': return WIN;
   }
 }
 
 function parseRoundState(line) {
-  const [opponentThrowString, myThrowString] = line.split(' ');
+  const [opponentShapeString, outcomeString] = line.split(' ');
   return {
-    opponentThrow: parseThrowString(opponentThrowString),
-    myThrow: parseThrowString(myThrowString),
+    opponentShape: parseShapeString(opponentShapeString),
+    outcome: parseOutcomeString(outcomeString),
   };
 }
 
@@ -65,8 +82,24 @@ function parseRoundStates(lines) {
   return lines.split('\n').map(parseRoundState);
 }
 
-function getThrowScore(state) {
-  switch (state.myThrow) {
+function inferShape(shape, outcome) {
+  switch (outcome) {
+    case LOSS: return BEATS_MAP.get(shape);
+    case DRAW: return shape;
+    case WIN: return BEATEN_BY_MAP.get(shape);
+  }
+}
+
+function populateRoundState(state) {
+  // infer my shape
+  return {
+    ...state,
+    myShape: inferShape(state.opponentShape, state.outcome),
+  };
+}
+
+function getShapeScore(state) {
+  switch (state.myShape) {
     case ROCK: return 1;
     case PAPER: return 2;
     case SCISSORS: return 3;
@@ -75,22 +108,23 @@ function getThrowScore(state) {
 }
 
 function getOutcomeScore(state) {
-  // case: opponent beats me
-  if (BEATS_MAP.get(state.opponentThrow) === state.myThrow) return 0;
-  // case: I beat my opponent
-  if (BEATS_MAP.get(state.myThrow) === state.opponentThrow) return 6;
-  // case: draw
-  return 3;
+  switch (state.outcome) {
+    case LOSS: return 0;
+    case DRAW: return 3;
+    case WIN: return 6;
+    default: return 0;
+  }
 }
 
 function getStateScore(state) {
-  return getThrowScore(state) + getOutcomeScore(state);
+  return getShapeScore(state) + getOutcomeScore(state);
 }
 
 async function main() {
   // read list from file
   const lines = await fs.readFile('./data', { encoding: 'utf8' });
-  const roundStates = parseRoundStates(lines);
+  const incompleteRoundStates = parseRoundStates(lines);
+  const roundStates = incompleteRoundStates.map(populateRoundState);
   const scores = roundStates.map(getStateScore);
 
   // print result
