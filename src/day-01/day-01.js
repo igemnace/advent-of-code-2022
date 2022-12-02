@@ -79,7 +79,7 @@ function findMaxN(n, list) {
 
 async function main() {
   // read list from file
-  const caloriesList = await fs.readFile('./day-1.data', { encoding: 'utf8' });
+  const caloriesList = await fs.readFile('./data', { encoding: 'utf8' });
   const countList = parseCaloriesList(caloriesList);
   const max3 = findMaxN(3, countList);
 
@@ -91,5 +91,5 @@ main()
   .then(() => process.exit(0))
   .catch(error => {
     console.error(error);
-    process.exit(1)
+    process.exit(1);
   });
