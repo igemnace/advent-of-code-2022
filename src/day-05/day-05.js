@@ -57,6 +57,38 @@ const { promises: fs } = require('fs');
  * one-by-one, so any Instruction that has numToMove > 1 will actually just call
  * the above move function numToMove times. Easy!
  * 3. Simply go through each Instruction in order and apply the above.
+ *
+ * Part 2:
+ *
+ * Now, rearrangement happens by moving crates at the same time. Previously,
+ * having an Instruction with numToMove > 1 meant having to move crates
+ * one-by-one. This impacts the output, as moving one-by-one reverses the order
+ * of the moved crates.
+ *
+ * Amendment would really just be for step 2 above, which is implemented in our
+ * performInstruction function. We have to be mindful of the order here. Take
+ * the following example from the problem:
+ * [D]        
+ * [N] [C]    
+ * [Z] [M] [P]
+ *  1   2   3
+ *
+ * In this state, if we perform a "move 3 from 1 to 3" instruction, the result
+ * must be:
+ *        [D]
+ *        [N]
+ *    [C] [Z]
+ *    [M] [P]
+ * 1   2   3
+ *
+ * Notice that D is the first one to be popped, but it must be pushed to stack 3
+ * last. The semantics is First In, Last Out -- basically just a Stack as well!
+ *
+ * So the idea in performInstruction now will be:
+ *
+ * 2a. Pop off numToMove elements from the "from" stack into a temporary stack.
+ * 2b. Once all elements are popped, pop each element in the temporary stack
+ * straight into the "to" stack.
  */
 
 /***********
@@ -152,17 +184,21 @@ function parseStacksAndInstructions(lines) {
  *****************/
 
 // mutates stacks
-function moveCrate(from, to, stacks) {
-  // from and to are 1-based indexes, so we have to do -1
-  const element = stacks[from - 1].pop();
-  stacks[to - 1].push(element);
-}
-
-// mutates stacks
 function performInstruction(instruction, stacks) {
-  // simply repeatedly call moveCrate numToMove times
+  const tempStack = new Stack();
+
+  // 2a: pop off elements into the temp stack
   for (let i = 0; i < instruction.numToMove; i++) {
-    moveCrate(instruction.from, instruction.to, stacks);
+    // "from" is a 1-based index, so we have to do -1
+    const element = stacks[instruction.from - 1].pop();
+    tempStack.push(element);
+  }
+
+  // 2b: push elements into the "to" stack
+  while (tempStack.peek()) {
+    const element = tempStack.pop();
+    // "to" is a 1-based index, so we have to do -1
+    stacks[instruction.to - 1].push(element);
   }
 }
 
