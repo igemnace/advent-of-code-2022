@@ -9,7 +9,7 @@ Structure is simple enough: I go into `src/day-XX` and write my solutions there.
 You may be wondering why I don't use `package.json` scripts at the moment.
 That's because the repo structure is still in flux -- I want to entertain the
 possibility of writing solutions for each day in different languages (for
-practice): notably JS, Rust, and possible Haskell.
+practice): notably JS, Rust, and possibly Haskell.
 
 ## Licensing
 
