@@ -3,6 +3,8 @@ const { promises: fs } = require('fs');
 /**
  * Treetop Tree House
  *
+ * Part 1:
+ *
  * Input is in the following format:
  * 30373
  * 25512
@@ -79,6 +81,38 @@ const { promises: fs } = require('fs');
  *   elements and assign each one to a core), so optimization can actually be
  *   done for sizable gains in the implementation itself instead of in the
  *   algorithm.
+ *
+ * Part 2:
+ *
+ * Now we don't want to just check if a tree is *eventually* hidden in a
+ * direction -- we want to see how many trees can be viewed before we hit an
+ * obstruction. Problem calls this the "viewing distance".
+ *
+ * For our example of 25512, say we were on the middle 5 tree:
+ * - Viewing distance to the left is just 1, because we're immediately blocked
+ *   by a 5 tree to the left.
+ * - Viewing distance to the right is 2, because we can see all the way out to
+ *   the edge, passing two trees (each with height 1 and 2).
+ *
+ * Problem then defines a "scenic score", which is the viewing distances for
+ * each direction multiplied all together. Problem is to find the highest scenic
+ * score.
+ *
+ * Notice that this is a different problem altogether -- we don't care whether a
+ * tree is visible at all or not. It just uses eerily similar semantics when
+ * we're finding the viewing distance.
+ *
+ * With that, I'd have a different algo (with the same parsing logic), amending
+ * steps 3 and 4 above:
+ *
+ * 3'. For each element, compute its scenic score (and thus its individual
+ *     viewing distances). Let's repurpose our generator functions for this --
+ *     we'll need to tweak getLeft and getTop so we iterate in order from the
+ *     center tree (basically, we'll have to yield in reverse order one way or
+ *     another).
+ * 4'. Maintain the highest scenic score in memory. Once we're done with the
+ *     traversal, this should represent the highest scenic score (sort of like a
+ *     single "bubble up" for a 2D array).
  */
 
 function parseRow(line) {
@@ -108,7 +142,8 @@ function parseLines(string) {
 
 function* getLeft(i, j, matrix) {
   // this is easy: row is already an array
-  yield* matrix[i].slice(0, j);
+  // we have to yield in reverse order though
+  yield* matrix[i].slice(0, j).reverse();
 }
 
 function* getRight(i, j, matrix) {
@@ -117,7 +152,8 @@ function* getRight(i, j, matrix) {
 }
 
 function* getTop(i, j, matrix) {
-  for (let cur = 0; cur < i; cur++) {
+  // yield in reverse order!
+  for (let cur = i - 1; cur >= 0; cur--) {
     yield matrix[cur][j];
   }
 }
@@ -183,13 +219,60 @@ function countVisible(matrix) {
   return count;
 }
 
+function getViewingDistanceFromSide(element, side) {
+  let viewingDistance = 0;
+
+  for (const current of side) {
+    viewingDistance++;
+    // stop counting if we hit an obstruction
+    if (current >= element) break;
+  }
+
+  return viewingDistance;
+}
+
+function getScenicScore(i, j, matrix) {
+  const element = matrix[i][j];
+
+  // get viewing distance for each side
+  const viewingDistances = [
+    getViewingDistanceFromSide(element, getTop(i, j, matrix)),
+    getViewingDistanceFromSide(element, getLeft(i, j, matrix)),
+    getViewingDistanceFromSide(element, getRight(i, j, matrix)),
+    getViewingDistanceFromSide(element, getBottom(i, j, matrix)),
+  ];
+
+  // again, we go over the row and the column, so this is linear time
+  return viewingDistances
+    // omit the second arg of reduce so we start with the first element
+    .reduce((scenicScore, viewingDistance) => scenicScore * viewingDistance);
+}
+
+function findMaxScenicScore(matrix) {
+  // maintain max in memory
+  let max = 0;
+
+  // traverse the matrix: use the typical i and j indices
+  // but use 0-based indices for simplicity
+  for (let i = 0; i < matrix.length; i++) {
+    for (let j = 0; j < matrix[i].length; j++) {
+      // remember a scenic score only if it's higher than the current max
+      const scenicScore = getScenicScore(i, j, matrix);
+      if (scenicScore > max) max = scenicScore;
+    }
+  }
+
+  // getScenicScore is O(n), while traversal is O(n ^ 2). total runtime is O(n ^ 3)
+  return max;
+}
+
 async function main() {
   const input = await fs.readFile('./data', { encoding: 'utf8' });
   const lines = parseLines(input);
   const matrix = parseMatrix(lines);
 
   // print the result
-  console.log(countVisible(matrix));
+  console.log(findMaxScenicScore(matrix));
 }
 
 main()
