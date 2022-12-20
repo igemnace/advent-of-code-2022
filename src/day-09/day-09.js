@@ -3,6 +3,8 @@ const { promises: fs } = require('fs');
 /**
  * Rope Bridge
  *
+ * Part 1:
+ *
  * Problem begins with the context: imagine we're on a grid. There's a rope on
  * the grid, and the head H and the tail T of the rope are marked on the grid,
  * e.g.
@@ -109,6 +111,22 @@ const { promises: fs } = require('fs');
  * after each step.
  * 5. Once we've exhausted our Instructions array, the size of our set of T's
  * positions should be the number we're looking for.
+ *
+ * Part 2:
+ *
+ * This is an interesting extension! Now we have to keep track of a rope with
+ * TEN knots, each consecutive pair linked together as head and tail.
+ *
+ * Because of the way we set up our movePosition and moveTail functions, we
+ * don't have to change a thing to compute each consecutive pair's positions.
+ * The changes will all be in performInstruction:
+ *
+ * 4a. It's better to now keep a list of positions, rather than just two (head
+ *     and tail).
+ * 4b. Instead of a single "move head" and a single "move tail", we now have to
+ *     iterate over our list: move the first position as head, then move each
+ *     succeeding position as tail to the previous position.
+ * 4c. Once all the positions are moved, store the last one in our visited set.
  */
 
 function parseInstruction(line) {
@@ -193,14 +211,24 @@ function moveTail(headPosition, tailPosition) {
 // mutates state
 function performInstruction(instruction, state) {
   const { direction, numSteps } = instruction;
+  const { positions } = state;
 
-  for (let i = 0; i < numSteps; i++) {
-    // move head one step
-    state.head = movePosition(direction, state.head);
-    // move tail one step
-    state.tail = moveTail(state.head, state.tail);
-    // remember tail's position. use a string key of format x,y for convenience
-    const { x, y } = state.tail;
+  // NOTE: I'm stubbing out my iteration variable to _ here,
+  // because I don't really need to know what step I'm on.
+  // I just need to iterate numSteps times
+  for (let _ = 0; _ < numSteps; _++) {
+    // move the very first head one step
+    positions[0] = movePosition(direction, positions[0]);
+
+    // move the rest of our rope, one knot at a time
+    for (let i = 1; i < positions.length; i++) {
+      // move as a tail one step, with the previous knot as our head
+      positions[i] = moveTail(positions[i - 1], positions[i]);
+    }
+
+    // remember the very last tail's position
+    // use a string key of format x,y for convenience
+    const { x, y } = positions[positions.length - 1];
     state.visited.add(`${x},${y}`);
   }
 }
@@ -219,8 +247,8 @@ async function main() {
 
   // define our initial state
   const state = {
-    head: { x: 0, y: 0 },
-    tail: { x: 0, y: 0 },
+    // initialize 10 positions, all starting at (0, 0)
+    positions: Array.from({ length: 10 }, () => ({ x: 0, y: 0 })),
     visited: new Set(),
   };
 
